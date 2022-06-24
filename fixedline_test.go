@@ -9,10 +9,12 @@ import (
 
 func TestSplitByMarks(t *testing.T) {
 	origin := "<width=55;lpad>part no 1<lpad>middle text<width=5;rpad>right text"
-	parser := fixedlinemout.ParseMarkup(origin)
+	parserEntrie, _ := fixedlinemout.NewRunner(false, "<>;=")
+
+	parser := parserEntrie.ParseMarkup(origin)
 
 	if len(parser.Entries) != 3 {
-		t.Error("unexoected size of elements", len(parser.Entries), "  ", parser.Entries)
+		t.Error("unexpected size of elements", len(parser.Entries), "  ", parser.Entries)
 	}
 
 	var testRunner fixedlinemout.Runner = fixedlinemout.Runner{Runners: make(map[string]fixedlinemout.MarkupRunner)}
@@ -50,6 +52,40 @@ func TestSplitByMarks(t *testing.T) {
 		}
 	}
 
+}
+
+func benchmarkParsing(times int) {
+	origin := "<width=55;lpad;lpad>check_1<lpad>check_1_1_1<width=5;rpad>S_Olskjdg_asgdfkgdfkaf_laksgfkhgf_lksajf_ohr"
+	parserBase, _ := fixedlinemout.NewRunner(false, "<>;=")
+
+	parser := parserBase.ParseMarkup(origin)
+
+	parserBase.Runners["width"] = fixedlinemout.MarkupRunner{
+		Exec: func(mk fixedlinemout.Markup, current string) string {
+			return "(:" + mk.Reference + ":)" + current
+		},
+	}
+
+	parserBase.Runners["lpad"] = fixedlinemout.MarkupRunner{
+		Exec: func(mk fixedlinemout.Markup, cur string) string {
+			return "|:" + mk.Reference + ":|" + cur
+		},
+	}
+
+	parserBase.Runners["rpad"] = fixedlinemout.MarkupRunner{
+		Exec: func(mk fixedlinemout.Markup, cur string) string {
+			return "):" + mk.Reference + ":(" + cur
+		},
+	}
+	for b := 0; b < times; b++ {
+		parser.ParseAll(parserBase)
+	}
+}
+
+func Benchmark(b *testing.B) {
+	for n := 0; n < b.N; n++ {
+		benchmarkParsing(1)
+	}
 }
 
 func TestSplitText(t *testing.T) {
